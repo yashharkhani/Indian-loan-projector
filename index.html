@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loan EMI Calculator — Indian Banks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F6F0;
+    --card:#FBFCF9;
+    --ink:#1C2822;
+    --muted:#5C6B62;
+    --rule:#D5E0D0;
+    --rule-soft:#E4ECE0;
+    --green:#0E6B4F;      /* rupee-note green */
+    --green-soft:#E3EFE8;
+    --stamp:#9C3B2E;      /* rubber-stamp maroon for interest */
+    --stamp-soft:#F4E6E2;
+    --gold:#B98A2C;
+    --focus:#0E6B4F;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.5;
+    background-image:repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(14,107,79,.045) 39px,rgba(14,107,79,.045) 40px);
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:28px 20px 64px}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:26px}
+  .brand{font-family:'Fraunces',serif;font-weight:650;font-size:clamp(24px,4vw,34px);letter-spacing:-.01em}
+  .brand .rupee{color:var(--green)}
+  .sub{font-size:13px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em}
+
+  .grid{display:grid;grid-template-columns:minmax(320px,430px) 1fr;gap:26px;align-items:start}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+
+  .panel{background:var(--card);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+  .panel-head{padding:12px 18px;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(0deg,rgba(14,107,79,.04),transparent)}
+  .panel-head h2{font-family:'Fraunces',serif;font-size:17px;font-weight:650}
+  .panel-body{padding:18px}
+
+  .field{margin-bottom:20px}
+  .field:last-child{margin-bottom:4px}
+  .field-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
+  label{font-size:13.5px;font-weight:600;color:var(--ink)}
+  .hint{font-size:12px;color:var(--muted)}
+  .inwords{font-size:12px;color:var(--green);font-weight:600;font-family:'IBM Plex Mono',monospace}
+
+  .inputrow{display:flex;gap:8px;align-items:center}
+  .money{position:relative;flex:1}
+  .money .pre{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px}
+  input[type=number]{
+    width:100%;padding:9px 10px 9px 26px;font:500 15px 'IBM Plex Mono',monospace;
+    border:1px solid var(--rule);border-radius:7px;background:#fff;color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  input[type=number].nopre{padding-left:10px}
+  .suffix{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);min-width:34px}
+  input[type=number]:focus,select:focus{outline:2px solid var(--focus);outline-offset:1px;border-color:var(--focus)}
+  input[type=range]{width:100%;accent-color:var(--green);margin-top:8px;height:22px}
+  select{
+    width:100%;padding:9px 10px;font:500 14px 'IBM Plex Sans',sans-serif;border:1px solid var(--rule);
+    border-radius:7px;background:#fff;color:var(--ink)
+  }
+
+  .seg{display:flex;border:1px solid var(--rule);border-radius:7px;overflow:hidden}
+  .seg button{
+    flex:1;padding:8px 6px;font:600 12.5px 'IBM Plex Sans',sans-serif;background:#fff;color:var(--muted);
+    border:none;border-right:1px solid var(--rule);cursor:pointer
+  }
+  .seg button:last-child{border-right:none}
+  .seg button[aria-pressed="true"]{background:var(--green);color:#fff}
+  .seg button:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+
+  .subcard{border:1px dashed var(--rule);border-radius:8px;padding:14px;background:rgba(255,255,255,.5);margin-top:10px}
+  .subcard.off{display:none}
+
+  /* Passbook results */
+  .passbook{background:var(--card);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+  .pb-head{padding:14px 20px;border-bottom:2px solid var(--ink);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+  .pb-head h2{font-family:'Fraunces',serif;font-size:19px;font-weight:650}
+  .pb-acct{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);letter-spacing:.06em}
+
+  .ledger{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--rule)}
+  @media (max-width:560px){.ledger{grid-template-columns:1fr 1fr}}
+  .cell{padding:16px 20px;border-right:1px solid var(--rule-soft)}
+  .cell:last-child{border-right:none}
+  .cell .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+  .cell .v{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:clamp(17px,2.4vw,22px);margin-top:3px;font-variant-numeric:tabular-nums}
+  .cell .v.green{color:var(--green)}
+  .cell .v.stamp{color:var(--stamp)}
+  .cell .s{font-size:12px;color:var(--muted);margin-top:2px}
+
+  .emi-hero{padding:22px 20px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:linear-gradient(0deg,rgba(14,107,79,.05),transparent)}
+  .emi-hero .k{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+  .emi-hero .big{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:clamp(30px,5vw,42px);color:var(--green);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .emi-hero .range{font-size:13px;color:var(--muted);margin-top:2px}
+  .savings{
+    border:1.5px solid var(--stamp);color:var(--stamp);border-radius:6px;padding:8px 14px;
+    font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;transform:rotate(-2deg);
+    background:var(--stamp-soft);text-align:center
+  }
+  .savings.good{border-color:var(--green);color:var(--green);background:var(--green-soft)}
+  .savings small{display:block;font-weight:400;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
+
+  .bar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:14px 20px 6px;border:1px solid var(--rule)}
+  .bar .p{background:var(--green)}
+  .bar .i{background:var(--stamp)}
+  .bar .d{background:var(--gold)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;padding:0 20px 16px;font-size:12px;color:var(--muted)}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:baseline}
+
+  .tbl-wrap{overflow-x:auto;padding:0 8px 8px}
+  table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-variant-numeric:tabular-nums}
+  th{font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:right;padding:10px 10px;border-bottom:2px solid var(--ink);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--rule-soft);white-space:nowrap}
+  tr:nth-child(even) td{background:rgba(14,107,79,.03)}
+  td.pre{color:var(--gold);font-weight:600}
+  td.int{color:var(--stamp)}
+  tfoot td{border-top:2px solid var(--ink);font-weight:600;border-bottom:none}
+
+  .note{padding:12px 20px 18px;font-size:12px;color:var(--muted);border-top:1px solid var(--rule)}
+  .warn{margin:0 20px 14px;padding:10px 12px;border:1px solid var(--gold);background:#FBF4E4;border-radius:7px;font-size:13px;display:none}
+  .warn.show{display:block}
+  @media (prefers-reduced-motion:no-preference){
+    .emi-hero .big{transition:color .2s}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="brand"><span class="rupee">₹</span> Loan EMI Calculator</div>
+      <div class="sub">Reducing-balance · Indian bank method</div>
+    </div>
+    <div class="sub" id="today"></div>
+  </header>
+
+  <div class="grid">
+    <!-- ============ INPUTS ============ -->
+    <section class="panel" aria-label="Loan inputs">
+      <div class="panel-head"><h2>Loan details</h2><span class="hint">All amounts in ₹</span></div>
+      <div class="panel-body">
+
+        <div class="field">
+          <div class="field-top">
+            <label for="cost">Property / asset cost</label>
+            <span class="inwords" id="costWords"></span>
+          </div>
+          <div class="inputrow">
+            <div class="money"><span class="pre">₹</span><input type="number" id="cost" value="7500000" min="100000" step="50000"></div>
+          </div>
+          <input type="range" id="costR" min="500000" max="50000000" step="100000" value="7500000" aria-label="Property cost slider">
+        </div>
+
+        <div class="field">
+          <div class="field-top">
+            <label for="dpPct">Down payment</label>
+            <span class="inwords" id="dpWords"></span>
+          </div>
+          <div class="inputrow">
+            <input type="number" id="dpPct" class="nopre" value="20" min="0" max="90" step="1" style="max-width:110px">
+            <span class="suffix">%</span>
+            <div class="money"><span class="pre">₹</span><input type="number" id="dpAmt" step="10000" min="0"></div>
+          </div>
+          <input type="range" id="dpR" min="0" max="90" step="1" value="20" aria-label="Down payment percent slider">
+          <div class="hint" style="margin-top:6px">RBI LTV norms: banks typically finance 75–90% of cost. Loan amount = <strong id="loanAmtInline"></strong></div>
+        </div>
+
+        <div class="field">
+          <div class="field-top"><label for="rate">Interest rate (p.a.)</label><span class="hint">floating / fixed</span></div>
+          <div class="inputrow">
+            <input type="number" id="rate" class="nopre" value="8.5" min="4" max="20" step="0.05" style="max-width:130px">
+            <span class="suffix">%</span>
+          </div>
+          <input type="range" id="rateR" min="6" max="15" step="0.05" value="8.5" aria-label="Interest rate slider">
+        </div>
+
+        <div class="field">
+          <div class="field-top"><label for="years">Tenure</label><span class="hint" id="tenureHint"></span></div>
+          <div class="inputrow">
+            <input type="number" id="years" class="nopre" value="20" min="1" max="30" step="1" style="max-width:110px">
+            <span class="suffix">years</span>
+          </div>
+          <input type="range" id="yearsR" min="1" max="30" step="1" value="20" aria-label="Tenure slider">
+        </div>
+
+        <div class="field">
+          <div class="field-top">
+            <label for="stepUp">EMI step-up every year</label>
+            <span class="hint">as salary grows</span>
+          </div>
+          <div class="inputrow">
+            <input type="number" id="stepUp" class="nopre" value="0" min="0" max="20" step="0.5" style="max-width:110px">
+            <span class="suffix">% / yr</span>
+          </div>
+          <input type="range" id="stepUpR" min="0" max="15" step="0.5" value="0" aria-label="Step-up percent slider">
+          <div class="hint" style="margin-top:6px">EMI increases by this % after every 12 months, closing the loan faster and cutting interest.</div>
+        </div>
+
+        <div class="field">
+          <div class="field-top"><label>Prepayment</label><span class="hint">part-payment towards principal</span></div>
+          <div class="seg" role="group" aria-label="Prepayment frequency">
+            <button type="button" data-pp="none" aria-pressed="true">None</button>
+            <button type="button" data-pp="once" aria-pressed="false">One-time</button>
+            <button type="button" data-pp="yearly" aria-pressed="false">Every year</button>
+            <button type="button" data-pp="monthly" aria-pressed="false">Every month</button>
+          </div>
+
+          <div class="subcard off" id="ppCard">
+            <div class="field">
+              <div class="field-top"><label for="ppAmt" id="ppAmtLabel">Prepayment amount</label><span class="inwords" id="ppWords"></span></div>
+              <div class="money"><span class="pre">₹</span><input type="number" id="ppAmt" value="200000" min="0" step="10000"></div>
+            </div>
+            <div class="field">
+              <div class="field-top"><label for="ppStart" id="ppStartLabel">Starting after</label></div>
+              <div class="inputrow">
+                <input type="number" id="ppStart" class="nopre" value="1" min="1" max="30" step="1" style="max-width:110px">
+                <span class="suffix" id="ppStartUnit">year(s)</span>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:0">
+              <div class="field-top"><label for="ppMode">On prepayment, bank should</label></div>
+              <select id="ppMode">
+                <option value="tenure" selected>Reduce tenure (keep EMI same) — saves most interest</option>
+                <option value="emi">Reduce EMI (keep tenure same) — eases monthly outflow</option>
+              </select>
+              <div class="hint" style="margin-top:6px">Floating-rate loans to individuals carry no prepayment penalty per RBI rules.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============ RESULTS ============ -->
+    <section class="passbook" aria-label="Results" aria-live="polite">
+      <div class="pb-head">
+        <h2>Repayment passbook</h2>
+        <span class="pb-acct" id="acctLine"></span>
+      </div>
+
+      <div class="emi-hero">
+        <div>
+          <div class="k">Monthly EMI (Year 1)</div>
+          <div class="big" id="emiBig">₹0</div>
+          <div class="range" id="emiRange"></div>
+        </div>
+        <div class="savings" id="savingsStamp" hidden>
+          <small>vs plain loan</small>
+          <span id="savingsText"></span>
+        </div>
+      </div>
+
+      <div class="warn" id="warnBox"></div>
+
+      <div class="ledger">
+        <div class="cell"><div class="k">Loan amount</div><div class="v" id="rLoan"></div><div class="s" id="rLoanS"></div></div>
+        <div class="cell"><div class="k">Total interest</div><div class="v stamp" id="rInt"></div><div class="s" id="rIntS"></div></div>
+        <div class="cell"><div class="k">Total payment</div><div class="v" id="rTotal"></div><div class="s" id="rTotalS"></div></div>
+        <div class="cell"><div class="k">Loan closes in</div><div class="v green" id="rClose"></div><div class="s" id="rCloseS"></div></div>
+        <div class="cell"><div class="k">Total prepaid</div><div class="v" id="rPre"></div><div class="s">lump-sum principal</div></div>
+        <div class="cell"><div class="k">Down payment</div><div class="v" id="rDp"></div><div class="s" id="rDpS"></div></div>
+      </div>
+
+      <div class="bar" id="splitBar" role="img" aria-label="Split of total cost"></div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--gold)"></span>Down payment</span>
+        <span><span class="dot" style="background:var(--green)"></span>Principal</span>
+        <span><span class="dot" style="background:var(--stamp)"></span>Interest</span>
+      </div>
+
+      <div class="tbl-wrap">
+        <table id="schedule">
+          <thead>
+            <tr><th>Year</th><th>EMI/mo</th><th>Principal</th><th>Interest</th><th>Prepaid</th><th>Balance</th></tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+
+      <div class="note">
+        Interest computed monthly on reducing balance, as followed by Indian banks and HFCs. Figures are indicative; actual EMI may differ marginally due to disbursement date, processing fees and rate resets. Step-up EMI is applied at the start of each new loan year; prepayments are credited straight to principal.
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+
+  // ---------- Indian number formatting ----------
+  const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
+  function lakhCr(n){
+    if(n >= 1e7) return (n/1e7).toFixed(n%1e7===0?0:2).replace(/\.00$/,'') + ' Cr';
+    if(n >= 1e5) return (n/1e5).toFixed(n%1e5===0?0:2).replace(/\.00$/,'') + ' L';
+    if(n >= 1e3) return (n/1e3).toFixed(0) + ' K';
+    return String(Math.round(n));
+  }
+  const words = n => n>0 ? '≈ ₹' + lakhCr(n) : '';
+
+  // ---------- state ----------
+  let ppType = 'none';
+
+  function link(numId, rangeId){
+    $(numId).addEventListener('input', ()=>{ $(rangeId).value = $(numId).value; update(); });
+    $(rangeId).addEventListener('input', ()=>{ $(numId).value = $(rangeId).value; update(); });
+  }
+  link('cost','costR'); link('rate','rateR'); link('years','yearsR'); link('stepUp','stepUpR');
+
+  // down payment: % <-> amount two-way
+  $('dpPct').addEventListener('input', ()=>{ $('dpR').value = $('dpPct').value; syncDpFromPct(); update(); });
+  $('dpR').addEventListener('input', ()=>{ $('dpPct').value = $('dpR').value; syncDpFromPct(); update(); });
+  $('dpAmt').addEventListener('input', ()=>{
+    const cost = +$('cost').value || 0;
+    const pct = cost>0 ? Math.min(95, Math.max(0, (+$('dpAmt').value||0)/cost*100)) : 0;
+    $('dpPct').value = pct.toFixed(1).replace(/\.0$/,'');
+    $('dpR').value = Math.round(pct);
+    update();
+  });
+  $('cost').addEventListener('input', syncDpFromPct);
+  $('costR').addEventListener('input', syncDpFromPct);
+  function syncDpFromPct(){
+    const cost = +$('cost').value || 0;
+    $('dpAmt').value = Math.round(cost * (+$('dpPct').value||0)/100);
+  }
+
+  ['ppAmt','ppStart'].forEach(id => $(id).addEventListener('input', update));
+  $('ppMode').addEventListener('change', update);
+
+  document.querySelectorAll('.seg button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed','false'));
+      btn.setAttribute('aria-pressed','true');
+      ppType = btn.dataset.pp;
+      $('ppCard').classList.toggle('off', ppType==='none');
+      if(ppType==='once'){ $('ppAmtLabel').textContent='Prepayment amount'; $('ppStartLabel').textContent='Paid at end of year'; $('ppStartUnit').textContent='year'; }
+      if(ppType==='yearly'){ $('ppAmtLabel').textContent='Prepay every year'; $('ppStartLabel').textContent='Starting from year'; $('ppStartUnit').textContent='year'; }
+      if(ppType==='monthly'){ $('ppAmtLabel').textContent='Extra amount every month'; $('ppStartLabel').textContent='Starting from month'; $('ppStartUnit').textContent='month'; }
+      update();
+    });
+  });
+
+  // ---------- EMI math ----------
+  const emiOf = (P, r, n) => r===0 ? P/n : P * r * Math.pow(1+r,n) / (Math.pow(1+r,n)-1);
+
+  function simulate(P, annualRate, nMonths, stepUpPct, pp){
+    const r = annualRate/1200;
+    let bal = P, emi = emiOf(P, r, nMonths);
+    const firstEmi = emi;
+    let totInt = 0, totPre = 0, m = 0;
+    const years = []; // {emiStart, principal, interest, prepaid, balance}
+    let y = {emi: emi, principal:0, interest:0, prepaid:0};
+    let warned = false;
+
+    const startM = pp ? (pp.type==='monthly' ? pp.start : pp.start*12) : Infinity;
+
+    while(bal > 0.5 && m < 12*60){
+      m++;
+      // step-up at the start of each new loan year
+      if(stepUpPct>0 && m>1 && (m-1)%12===0){ emi = emi*(1+stepUpPct/100); }
+      if((m-1)%12===0){ y.emi = emi; }
+
+      const interest = bal * r;
+      if(emi <= interest + 0.01 && !warned){ warned = true; }
+      let pay = Math.min(emi, bal + interest);
+      let prin = pay - interest;
+      if(prin < 0) prin = 0;
+      bal -= prin;
+      totInt += Math.min(interest, pay);
+      y.interest += Math.min(interest, pay);
+      y.principal += prin;
+
+      // prepayment after the EMI
+      if(pp && bal > 0.5){
+        let doPre = false;
+        if(pp.type==='once'   && m === pp.start*12) doPre = true;
+        if(pp.type==='yearly' && m >= pp.start*12 && m % 12 === 0) doPre = true;
+        if(pp.type==='monthly'&& m >= pp.start) doPre = true;
+        if(doPre && pp.amt > 0){
+          const pre = Math.min(pp.amt, bal);
+          bal -= pre; totPre += pre; y.prepaid += pre;
+          if(pp.mode==='emi' && bal > 0.5){
+            const remaining = nMonths - m;
+            if(remaining > 0) emi = emiOf(bal, r, remaining);
+          }
+        }
+      }
+
+      if(m % 12 === 0 || bal <= 0.5){
+        years.push({emi:y.emi, principal:y.principal, interest:y.interest, prepaid:y.prepaid, balance:Math.max(0,bal)});
+        y = {emi: emi, principal:0, interest:0, prepaid:0};
+      }
+    }
+    return {months:m, totInt, totPre, years, firstEmi, lastEmi:emi, warned};
+  }
+
+  // ---------- render ----------
+  function update(){
+    const cost  = Math.max(0, +$('cost').value || 0);
+    const dp    = Math.min(cost, Math.max(0, +$('dpAmt').value || 0));
+    const P     = Math.max(0, cost - dp);
+    const rate  = Math.max(0, +$('rate').value || 0);
+    const yrs   = Math.min(60, Math.max(1, Math.round(+$('years').value || 1)));
+    const n     = yrs*12;
+    const step  = Math.max(0, +$('stepUp').value || 0);
+
+    const pp = ppType==='none' ? null : {
+      type: ppType,
+      amt: Math.max(0, +$('ppAmt').value || 0),
+      start: Math.max(1, Math.round(+$('ppStart').value || 1)),
+      mode: $('ppMode').value
+    };
+
+    $('costWords').textContent = words(cost);
+    $('dpWords').textContent = words(dp) + (cost>0 ? ' ('+ (dp/cost*100).toFixed(0) +'%)' : '');
+    $('ppWords').textContent = pp ? words(pp.amt) : '';
+    $('loanAmtInline').textContent = inr(P) + (P>0 ? ' (≈ ₹'+lakhCr(P)+')' : '');
+    $('tenureHint').textContent = n + ' months';
+    $('acctLine').textContent = 'A/C · ' + rate.toFixed(2) + '% p.a. · ' + yrs + ' yr';
+
+    if(P <= 0){
+      $('emiBig').textContent = '₹0';
+      $('emiRange').textContent = 'Loan fully covered by down payment';
+      return;
+    }
+
+    const base = simulate(P, rate, n, 0, null);        // plain loan for comparison
+    const res  = simulate(P, rate, n, step, pp);       // actual plan
+
+    // hero
+    $('emiBig').textContent = inr(res.firstEmi);
+    if(step>0){
+      $('emiRange').textContent = 'rises ' + step + '%/yr → final year ≈ ' + inr(res.lastEmi) + '/mo';
+    } else if(pp && pp.mode==='emi'){
+      $('emiRange').textContent = 'EMI reduces after each prepayment → last ≈ ' + inr(res.lastEmi) + '/mo';
+    } else {
+      $('emiRange').textContent = inr(res.firstEmi*12) + ' per year';
+    }
+
+    // savings stamp
+    const intSaved = base.totInt - res.totInt;
+    const moSaved  = base.months - res.months;
+    if((pp || step>0) && (intSaved > 1 || moSaved > 0)){
+      $('savingsStamp').hidden = false;
+      $('savingsStamp').classList.add('good');
+      $('savingsText').innerHTML = 'Interest saved: ' + inr(intSaved) + (moSaved>0 ? '<br>' + Math.floor(moSaved/12) + 'y ' + (moSaved%12) + 'm earlier' : '');
+    } else {
+      $('savingsStamp').hidden = true;
+    }
+
+    // warning
+    const w = $('warnBox');
+    if(res.warned){
+      w.textContent = 'Note: in some months the EMI barely covers interest — increase EMI/tenure inputs for a realistic plan.';
+      w.classList.add('show');
+    } else w.classList.remove('show');
+
+    // ledger
+    $('rLoan').textContent = inr(P);
+    $('rLoanS').textContent = '≈ ₹' + lakhCr(P) + ' financed';
+    $('rInt').textContent = inr(res.totInt);
+    $('rIntS').textContent = (res.totInt/P*100).toFixed(0) + '% of loan amount';
+    $('rTotal').textContent = inr(P + res.totInt);
+    $('rTotalS').textContent = 'principal + interest';
+    const cy = Math.floor(res.months/12), cm = res.months%12;
+    $('rClose').textContent = cy + 'y' + (cm? ' ' + cm + 'm' : '');
+    $('rCloseS').textContent = (base.months - res.months) > 0 ? (base.months-res.months) + ' months early' : res.months + ' EMIs';
+    $('rPre').textContent = res.totPre > 0 ? inr(res.totPre) : '—';
+    $('rDp').textContent = dp > 0 ? inr(dp) : '—';
+    $('rDpS').textContent = cost>0 ? (dp/cost*100).toFixed(0) + '% of cost' : '';
+
+    // split bar
+    const total = dp + P + res.totInt;
+    $('splitBar').innerHTML =
+      '<div class="d" style="width:' + (dp/total*100) + '%"></div>' +
+      '<div class="p" style="width:' + (P/total*100) + '%"></div>' +
+      '<div class="i" style="width:' + (res.totInt/total*100) + '%"></div>';
+
+    // schedule table
+    const tb = $('schedule').querySelector('tbody');
+    const tf = $('schedule').querySelector('tfoot');
+    tb.innerHTML = '';
+    let sp=0, si=0, spre=0;
+    res.years.forEach((row,i)=>{
+      sp+=row.principal; si+=row.interest; spre+=row.prepaid;
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>Yr ' + (i+1) + '</td>' +
+        '<td>' + inr(row.emi) + '</td>' +
+        '<td>' + inr(row.principal) + '</td>' +
+        '<td class="int">' + inr(row.interest) + '</td>' +
+        '<td class="' + (row.prepaid>0?'pre':'') + '">' + (row.prepaid>0? inr(row.prepaid) : '—') + '</td>' +
+        '<td>' + inr(row.balance) + '</td>';
+      tb.appendChild(tr);
+    });
+    tf.innerHTML = '<tr><td>Total</td><td></td><td>' + inr(sp) + '</td><td class="int">' + inr(si) + '</td><td>' + (spre>0?inr(spre):'—') + '</td><td>₹0</td></tr>';
+  }
+
+  $('today').textContent = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  syncDpFromPct();
+  update();
+})();
+</script>
+</body>
+</html>
